@@ -1,14 +1,17 @@
 #include "wumpus.h"
 
 #define SHIFT_PIN_SHCP 7
-#define SHIFT_PIN_STCP 4
-#define SHIFT_PIN_DS   2
+#define SHIFT_PIN_STCP 6
+#define SHIFT_PIN_DS   5
 
 typedef void (*stateFn)(unsigned long);
 stateFn currentStateFn = &introState;
 
 // north, south, east, west, arrow
-const uint8_t buttonPins[5] = {A0, A1, A2, A3, A4};
+const uint8_t buttonPins[5] = {A4, A5, 10, 11, A1};
+
+const uint8_t pinWind = 4; //blue led 
+const uint8_t pinLunpus = 3; //green led 
 
 const uint8_t northWall[2] = {0x01, 0x81};
 const uint8_t southWall[2] = {0x88, 0x08};
@@ -39,7 +42,6 @@ uint8_t arrows;
 
 unsigned long nextNoteTime = 0;
 uint8_t currentNote = 0;
-size_t songLength;
 uint16_t *currentSong;
 uint8_t *currentSongDurations;
 
@@ -104,7 +106,7 @@ void displayBatsNearby(unsigned long timer) {
   // wipe out wall dots
   segments[0] &= 0x7F;
   segments[1] &= 0x7F;
-  uint8_t frame = *(batNearbyFrames + batFrameOffset);
+  uint8_t frame = pgm_read_byte_near(batNearbyFrames + batFrameOffset);
   if (batFrameOffset == 0) {
     segments[batDirection] |= frame;
   } else {
@@ -137,6 +139,11 @@ void displayPitNearby(unsigned long timer) {
   static uint8_t windOffset = 0;
 
   playWind(windOffset);
+
+  if (nextNoteTime == 0) {
+    digitalWrite(pinWind, LOW);
+  }
+
   if (nextAction > timer) {
     return;
   }
@@ -153,7 +160,7 @@ void displayPitNearby(unsigned long timer) {
   }
   uint8_t displaySegments[2];
   sevsegshift.getSegments(displaySegments);
-  uint16_t word = *(maskSegments + windOffset);
+  uint16_t word = pgm_read_word_near(maskSegments + windOffset);
   displaySegments[0] &= (uint8_t)word;
   displaySegments[1] &= (uint8_t)(word >> 8);
   sevsegshift.setSegments(displaySegments);
@@ -166,6 +173,9 @@ void playWind(uint8_t windOffset) {
   if (nextNoteTime > 0) {
     return;
   }
+
+  digitalWrite(pinWind, HIGH);
+
   // clamp to a sane value
   windOffset = (windOffset > 10) ? 0 : windOffset;
   playNote(random(10, 20 + windOffset));
@@ -175,10 +185,16 @@ void displayWumpusNearby(unsigned long timer) {
   static unsigned long nextAction = 0;
   static int16_t currentBrightness = 0;
   static bool direction = true;
+
+  if (nextNoteTime == 0) {
+    digitalWrite(pinLunpus, LOW);
+  }
+
   if (nextAction > timer) {
     return;
   }
   nextAction = timer + 10;
+  
   if (direction) {
     if (currentBrightness == 0) {
       playSong(snoreUp, snoreUpDurations);
@@ -200,6 +216,7 @@ void displayWumpusNearby(unsigned long timer) {
     }
   }
   sevsegshift.setBrightness(currentBrightness);
+  digitalWrite(pinLunpus, HIGH);
 }
 
 bool displayAnimation(unsigned long timer, uint16_t frameTime, const uint8_t frames[]) {
@@ -207,9 +224,9 @@ bool displayAnimation(unsigned long timer, uint16_t frameTime, const uint8_t fra
     return false;
   }
   uint8_t displaySegments[2];
-  uint8_t frameCount = frames[0];
-  displaySegments[0] = (frames[animationFrameOffset + 1]);
-  displaySegments[1] = (frames[animationFrameOffset + 2]);
+  uint8_t frameCount = pgm_read_byte_near(&frames[0]);
+  displaySegments[0] = pgm_read_byte_near(&frames[animationFrameOffset + 1]);
+  displaySegments[1] = pgm_read_byte_near(&frames[animationFrameOffset + 2]);
   sevsegshift.setSegments(displaySegments);
   nextAnimationFrameTime = timer + frameTime;
   animationFrameOffset = (animationFrameOffset + 2) % frameCount;
@@ -286,7 +303,10 @@ void setupMap() {
     }
   }
 
-  pt = randomRoom();
+  do { //preventing overlap 
+      pt = randomRoom();
+  } while (cave[pt.x][pt.y].pit == 1 || cave[pt.x][pt.y].superbat == 1);
+
   cave[pt.x][pt.y].wumpus = 1;
   wumpusX = pt.x;
   wumpusY = pt.y;
@@ -343,16 +363,16 @@ void updateAudio(unsigned long timer) {
   if (timer < nextNoteTime) {
     return;
   }
-  if (currentNote == songLength) {
+  if (currentNote == pgm_read_byte_near((currentSongDurations))) {
     stopSong();
     return;
   }
-  uint16_t note = *(currentSong + currentNote);
+  uint16_t note = pgm_read_word_near((currentSong + currentNote));
   if (note == REPEAT) {
     currentNote = 0;
     return;
   }
-  uint8_t duration = *(currentSongDurations + currentNote + 1);
+  uint8_t duration = pgm_read_byte_near((currentSongDurations + currentNote + 1));
   playNote(note);
   nextNoteTime = duration + timer;
   currentNote++;
@@ -361,9 +381,8 @@ void updateAudio(unsigned long timer) {
 void playSong(uint16_t newSong[], uint8_t newSongDurations[]) {
   currentNote = 0;
   nextNoteTime = 1;
-  currentSong = newSong;
-  currentSongDurations = newSongDurations;
-  songLength = newSongDurations[0];
+  currentSong = &newSong[0];
+  currentSongDurations = &newSongDurations[0];
 }
 
 void stopSong() {
@@ -378,8 +397,8 @@ void renderText(unsigned long timer, uint8_t text[], uint8_t length) {
   }
   nextAction = timer + 400;
   uint8_t segments[2];
-  segments[0] = text[textOffset];
-  segments[1] = text[textOffset + 1];
+  segments[0] = pgm_read_byte_near(&text[textOffset]);
+  segments[1] = pgm_read_byte_near(&text[textOffset + 1]);
   sevsegshift.setSegments(segments);
   textOffset++;
   if (textOffset == length) {
@@ -409,6 +428,11 @@ void setup() {
   for (uint8_t i = 0; i < 5; i++) {
     pinMode(buttonPins[i], INPUT_PULLUP);
   }
+
+  pinMode(pinWind, OUTPUT);
+  pinMode(pinLunpus, OUTPUT);
+  digitalWrite(pinWind, LOW);
+  digitalWrite(pinLunpus, LOW);
 
   playSong(hotmk, hotmkDurations);
 }
@@ -675,12 +699,20 @@ void arrowFireState(unsigned long timer) {
 }
 
 void youLoseState(unsigned long timer) {
+  
+  digitalWrite(pinLunpus, LOW);
+  digitalWrite(pinWind, LOW);
+
   if (buttonState(arrow)) {
     currentStateFn = &startState;
   }
 }
 
 void youWinState(unsigned long timer) {
+
+  digitalWrite(pinLunpus, LOW);
+  digitalWrite(pinWind, LOW);
+  
   renderText(timer, youWinText, 18);
   if (buttonState(arrow)) {
     currentStateFn = &startState;
