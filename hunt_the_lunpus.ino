@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #include "wumpus.h"
 
 #define SHIFT_PIN_SHCP 7
@@ -10,8 +12,8 @@ stateFn currentStateFn = &introState;
 // north, south, east, west, arrow
 const uint8_t buttonPins[5] = {A4, A5, 10, 11, A1};
 
-const uint8_t pinWind = 4; //blue led 
-const uint8_t pinLunpus = 3; //green led 
+const uint8_t pinWind = 13; //blue led 
+const uint8_t pinLunpus = 12; //green led 
 
 const uint8_t northWall[2] = {0x01, 0x81};
 const uint8_t southWall[2] = {0x88, 0x08};
@@ -70,6 +72,54 @@ bool buttonState(button id) {
   return (buttonStates[id] == 0x80);
 }
 
+void playNote(uint16_t note) {
+  if (note == REST) {
+    DDRB &= ~(1 << DDB1); // disable output pin
+    return;
+  }
+  //only reset the counter when the note changes
+  if (OCR1A != note) {
+    TCNT1 = 0;            // reset the counter
+  }
+  OCR1A = note;         // set pitch
+  DDRB |= (1 << DDB1);  // enable output pin
+
+}
+
+void updateAudio(unsigned long timer) {
+  if (nextNoteTime == 0) {
+    return;
+  }
+  if (timer < nextNoteTime) {
+    return;
+  }
+  if (currentNote == pgm_read_byte((currentSongDurations))) {
+    stopSong();
+    return;
+  }
+  uint16_t note = pgm_read_word((currentSong + currentNote));
+  if (note == REPEAT) {
+    currentNote = 0;
+    return;
+  }
+  uint8_t duration = pgm_read_byte((currentSongDurations + currentNote + 1));
+  playNote(note);
+  nextNoteTime = duration + timer;
+  currentNote++;
+}
+
+void playSong(uint16_t newSong[], uint8_t newSongDurations[]) {
+  currentNote = 0;
+  nextNoteTime = 1;
+  currentSong = &newSong[0];
+  currentSongDurations = &newSongDurations[0];
+}
+
+void stopSong() {
+  nextNoteTime = 0;
+  playNote(REST);
+}
+
 void updateCaveDisplay() {
   uint8_t display[2] = {0, 0};
   if (cave[playerX][playerY - 1].wall) {
@@ -106,7 +156,7 @@ void displayBatsNearby(unsigned long timer) {
   // wipe out wall dots
   segments[0] &= 0x7F;
   segments[1] &= 0x7F;
-  uint8_t frame = pgm_read_byte_near(batNearbyFrames + batFrameOffset);
+  uint8_t frame = pgm_read_byte(batNearbyFrames + batFrameOffset);
   if (batFrameOffset == 0) {
     segments[batDirection] |= frame;
   } else {
@@ -160,7 +210,7 @@ void displayPitNearby(unsigned long timer) {
   }
   uint8_t displaySegments[2];
   sevsegshift.getSegments(displaySegments);
-  uint16_t word = pgm_read_word_near(maskSegments + windOffset);
+  uint16_t word = pgm_read_word(maskSegments + windOffset);
   displaySegments[0] &= (uint8_t)word;
   displaySegments[1] &= (uint8_t)(word >> 8);
   sevsegshift.setSegments(displaySegments);
@@ -185,12 +235,10 @@ void displayWumpusNearby(unsigned long timer) {
   static unsigned long nextAction = 0;
   static int16_t currentBrightness = 0;
   static bool direction = true;
-
-  if (nextNoteTime == 0) {
-    digitalWrite(pinLunpus, LOW);
-  }
-
+  digitalWrite(pinLunpus, HIGH);
+  
   if (nextAction > timer) {
+    digitalWrite(pinLunpus, LOW);
     return;
   }
   nextAction = timer + 10;
@@ -198,6 +246,7 @@ void displayWumpusNearby(unsigned long timer) {
   if (direction) {
     if (currentBrightness == 0) {
       playSong(snoreUp, snoreUpDurations);
+
     }
     currentBrightness += 1;
     if (currentBrightness >= maxBrightness) {
@@ -216,7 +265,7 @@ void displayWumpusNearby(unsigned long timer) {
     }
   }
   sevsegshift.setBrightness(currentBrightness);
-  digitalWrite(pinLunpus, HIGH);
+
 }
 
 bool displayAnimation(unsigned long timer, uint16_t frameTime, const uint8_t frames[]) {
@@ -224,9 +273,9 @@ bool displayAnimation(unsigned long timer, uint16_t frameTime, const uint8_t fra
     return false;
   }
   uint8_t displaySegments[2];
-  uint8_t frameCount = pgm_read_byte_near(&frames[0]);
-  displaySegments[0] = pgm_read_byte_near(&frames[animationFrameOffset + 1]);
-  displaySegments[1] = pgm_read_byte_near(&frames[animationFrameOffset + 2]);
+  uint8_t frameCount = pgm_read_byte(&frames[0]);
+  displaySegments[0] = pgm_read_byte(&frames[animationFrameOffset + 1]);
+  displaySegments[1] = pgm_read_byte(&frames[animationFrameOffset + 2]);
   sevsegshift.setSegments(displaySegments);
   nextAnimationFrameTime = timer + frameTime;
   animationFrameOffset = (animationFrameOffset + 2) % frameCount;
@@ -339,55 +388,7 @@ void initSpeaker() {
 
     TCCR1B |= (1 << WGM12);  // CTC: Clear Timer on Compare with OCR1A
     TCCR1A |= (1 << COM1A0); // Toggle OC1A on Compare Match
-    TCCR1B |= (1 << CS11);   // CPU clock / 8
-}
-
-void playNote(uint16_t note) {
-  if (note == REST) {
-    DDRB &= ~(1 << DDB1); // disable output pin
-    return;
-  }
-  //only reset the counter when the note changes
-  if (OCR1A != note) {
-    TCNT1 = 0;            // reset the counter
-  }
-  OCR1A = note;         // set pitch
-  DDRB |= (1 << DDB1);  // enable output pin
-
-}
-
-void updateAudio(unsigned long timer) {
-  if (nextNoteTime == 0) {
-    return;
-  }
-  if (timer < nextNoteTime) {
-    return;
-  }
-  if (currentNote == pgm_read_byte_near((currentSongDurations))) {
-    stopSong();
-    return;
-  }
-  uint16_t note = pgm_read_word_near((currentSong + currentNote));
-  if (note == REPEAT) {
-    currentNote = 0;
-    return;
-  }
-  uint8_t duration = pgm_read_byte_near((currentSongDurations + currentNote + 1));
-  playNote(note);
-  nextNoteTime = duration + timer;
-  currentNote++;
-}
-
-void playSong(uint16_t newSong[], uint8_t newSongDurations[]) {
-  currentNote = 0;
-  nextNoteTime = 1;
-  currentSong = &newSong[0];
-  currentSongDurations = &newSongDurations[0];
-}
-
-void stopSong() {
-  nextNoteTime = 0;
-  playNote(REST);
+    TCCR1B |= (1 << CS10);   // CPU clock / 8
 }
 
 void renderText(unsigned long timer, uint8_t text[], uint8_t length) {
@@ -397,8 +398,8 @@ void renderText(unsigned long timer, uint8_t text[], uint8_t length) {
   }
   nextAction = timer + 400;
   uint8_t segments[2];
-  segments[0] = pgm_read_byte_near(&text[textOffset]);
-  segments[1] = pgm_read_byte_near(&text[textOffset + 1]);
+  segments[0] = pgm_read_byte(&text[textOffset]);
+  segments[1] = pgm_read_byte(&text[textOffset + 1]);
   sevsegshift.setSegments(segments);
   textOffset++;
   if (textOffset == length) {
@@ -412,7 +413,7 @@ void setup() {
   initSpeaker();
 
   byte numDigits = 2;
-  byte digitPins[] = {12, 13}; // These are the PINS of the ** Arduino **
+  byte digitPins[] = {3, 4}; // These are the PINS of the ** Arduino **
   byte segmentPins[] = {6, 7, 3, 2, 1, 5, 0, 4}; // these are the PINs of the ** Shift register **
   bool resistorsOnSegments = false; // 'false' means resistors are on digit pins
   byte hardwareConfig = COMMON_CATHODE; // See README.md for options
