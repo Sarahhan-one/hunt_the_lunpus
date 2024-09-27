@@ -1,21 +1,18 @@
 #define REST 0
 #define REPEAT 0xFFFF
 
-#define A0 1818
-#define B0 1612
-#define C1 1500
-
-#define D2 681
-#define G2 510
-#define A2 455
-#define Ax2 429
-#define B2 405
-#define C3 382
-#define D3 341
-#define Dx3 321
-#define E3 303
-#define F3 286
-#define G3 255
-#define A3 227
-#define B3 202
-#define C4 191
+#define chord_D3 54496   // 146.83 Hz 
+#define chord_G3 40816   // 196.00 Hz 
+#define chord_A3 36364   // 220.00 Hz 
+#define chord_Ax3 34304  // 233.08 Hz 
+#define chord_B3 32359   // 246.94 Hz 
+#define chord_C4 30572   // 261.63 Hz 
+#define chord_D4 27249   // 293.66 Hz 
+#define chord_Dx4 25724  // 311.13 Hz 
+#define chord_E4 24268   // 329.63 Hz 
+#define chord_F4 22905   // 349.23 Hz 
+#define chord_G4 20408   // 392.00 Hz 
+#define chord_A4 18182   // 440.00 Hz 
+#define chord_B4 16179   // 493.88 Hz 
+#define chord_C5 15289   // 523.25 Hz 
+#define chord_B5 8090     // 987.77 Hz 
