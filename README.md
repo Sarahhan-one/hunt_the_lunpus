@@ -1,6 +1,7 @@
 # Hunt the Lunpus 
 Hunt the Lunpus is a handheld adaptation of the classic 1970s text-based game _Hunt the Wumpus_, built on the ATmega328p microcontroller. 
 It is based on [Douglas McInnes's Lunpus project](https://github.com/dmcinnes/lunpus/tree/main?tab=readme-ov-file), which provided the foundation for this adaptation. 
+![lunpus (2)](https://github.com/user-attachments/assets/47767b1e-2f2c-4b8a-84da-5010ec537dd8)
 
 
 ## Overview
@@ -24,6 +25,6 @@ This project builds on Douglas's work with additional hardware features - adds v
 
 ## PCB & Schematic
 The pcb directory includes EasyEDA project files that outline the schematic and PCB design. 
-
+![image](https://github.com/user-attachments/assets/434eae47-bbb2-49ba-bfbf-b3fdc4b49141)
 
 
