@@ -4,7 +4,7 @@ It is based on [Douglas McInnes's Lunpus project](https://github.com/dmcinnes/lu
 
 ![lunpus (2)](https://github.com/user-attachments/assets/47767b1e-2f2c-4b8a-84da-5010ec537dd8)
 
-**[Check out the video in action]([https://youtu.be/ctR4pCAqMrQ?si=eUrizgF7dfWRZ8VW](https://youtu.be/F6LPQ03PLAs)**
+**[Check out the video in action](https://youtu.be/F6LPQ03PLAs?si=z6rZ3W5Jc2bM02LP)**
 
 
 ## Overview
