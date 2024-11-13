@@ -4,6 +4,8 @@ It is based on [Douglas McInnes's Lunpus project](https://github.com/dmcinnes/lu
 
 ![lunpus (2)](https://github.com/user-attachments/assets/47767b1e-2f2c-4b8a-84da-5010ec537dd8)
 
+**[Check out the video in action]([https://youtu.be/ctR4pCAqMrQ?si=eUrizgF7dfWRZ8VW](https://youtu.be/F6LPQ03PLAs)**
+
 
 ## Overview
 Hunt the Lunpus is a handheld game console where the player explores a dangerous cave system filled with traps and a monstrous creature, the Lunpus. 
@@ -27,6 +29,8 @@ This project builds on Douglas's work with additional hardware features - adds v
 ## PCB & Schematic
 The pcb directory includes EasyEDA project files that outline the schematic and PCB design. 
 ![image](https://github.com/user-attachments/assets/434eae47-bbb2-49ba-bfbf-b3fdc4b49141)
+
+## Program 
 
 
 
