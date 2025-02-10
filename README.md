@@ -30,8 +30,54 @@ This project builds on Douglas's work with additional hardware features - adds v
 The pcb directory includes EasyEDA project files that outline the schematic and PCB design. 
 ![image](https://github.com/user-attachments/assets/434eae47-bbb2-49ba-bfbf-b3fdc4b49141)
 
-## Program 
+## Timer-Driven Processes
+```cpp
+void loop() {
+    static unsigned long timer = millis();
+    (*currentStateFn)(timer); // State-specific processing
 
+    updateAudio(timer); // Audio management
+    sevsegshift.refreshDisplay(); // Display refresh
+}
+```
+### key features
+* **Provides non-blocking time tracking**:
+  * In the ```loop()``` function, ```timer = millis()``` captures the current time in milliseconds. Various functions then use this ```timer``` to determine when to perform actions without stopping the entire program execution. For example, in ```renderText()```, it uses timer comparisons to manage timing:
+```cpp
+static unsigned long nextAction = 0;
+if (nextAction > timer) {
+return;
+}
+nextAction = timer + 400;
+```
 
+  * State functions using timer like ```updateAudio()``` check timer without blocking game progression
+```cpp
+  void updateAudio(unsigned long timer) {
+// Non-blocking audio processing
+//- Tracks next note timing
+//- Manages song progression dynamically
+    if (nextNoteTime == 0) return;
+    if (timer < nextNoteTime) return;
 
+    playNote(currentSong[currentNote]);
+    nextNoteTime = duration + timer;
+}
+```
+  * No ```delay()``` functions used
+    
+* **Supports pseudo-random timing variations**:
+   * Uses ```random()``` with timer. The combination of timer and random() creates a more natural, preventing monotonous, mechanical-feeling animations or interactions.
+```cpp
+nextAction = timer + 400 + random(600); // Randomized bat animation
+```
 
+* **Enables concurrent process management**:
+     * Simultaneously manages:
+       * Audio updates
+       * Display refreshes
+       * Hazard warnings
+       * Player input processing
+
+## State Machine Diagram
+![Image](https://github.com/user-attachments/assets/0e785b5a-3bd0-4b93-8277-5850491cec6a)
